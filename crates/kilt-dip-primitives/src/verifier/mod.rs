@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,20 +16,15 @@
 
 // If you feel like getting in touch with us, you can do so at info@botlabs.org
 
+mod errors;
+
 /// Verification logic to integrate a sibling chain as a DIP provider.
 pub mod parachain;
 /// Verification logic to integrate a child chain as a DIP provider.
 pub mod relaychain;
-
-mod common;
-
 pub use parachain::{
 	DipParachainStateProofVerifierError, KiltVersionedParachainVerifier, VersionedDipParachainStateProof,
 };
 pub use relaychain::{
 	DipRelaychainStateProofVerifierError, KiltVersionedRelaychainVerifier, VersionedRelaychainStateProof,
 };
-
-pub mod latest {
-	pub use super::{common::latest::*, parachain::latest::*, relaychain::latest::*};
-}

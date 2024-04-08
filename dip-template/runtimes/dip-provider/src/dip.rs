@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ use crate::{
 	weights, AccountId, Balances, DidIdentifier, Runtime, RuntimeEvent, RuntimeHoldReason,
 };
 
-const MAX_LINKED_ACCOUNTS: u32 = 20;
+pub const MAX_REVEALABLE_LINKED_ACCOUNTS: u32 = 10;
 
 pub mod runtime_api {
 	use super::*;
@@ -127,7 +127,11 @@ pub mod deposit {
 	impl From<CommitmentDepositRemovalHookError> for u16 {
 		fn from(value: CommitmentDepositRemovalHookError) -> Self {
 			match value {
-				CommitmentDepositRemovalHookError::DecodeKey => 0,
+				// DO NOT USE 0
+				// Errors of different sub-parts are separated by a `u8::MAX`.
+				// A value of 0 would make it confusing whether it's the previous sub-part error (u8::MAX)
+				// or the new sub-part error (u8::MAX + 0).
+				CommitmentDepositRemovalHookError::DecodeKey => 1,
 				CommitmentDepositRemovalHookError::Internal => u16::MAX,
 			}
 		}
@@ -239,7 +243,7 @@ impl pallet_dip_provider::Config for Runtime {
 	type IdentityCommitmentGenerator = DidMerkleRootGenerator<Runtime>;
 	// Identity info is defined as the collection of DID keys, linked accounts, and
 	// the optional web3name of a given DID subject.
-	type IdentityProvider = LinkedDidInfoProvider<MAX_LINKED_ACCOUNTS>;
+	type IdentityProvider = LinkedDidInfoProvider<MAX_REVEALABLE_LINKED_ACCOUNTS>;
 	type ProviderHooks = deposit::DepositCollectorHooks;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = weights::pallet_dip_provider::WeightInfo<Runtime>;

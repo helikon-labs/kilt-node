@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,13 +32,13 @@ pub mod traits;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub use crate::{
-	default_weights::WeightInfo, deposit::FixedDepositCollectorViaDepositsPallet, pallet::*,
-	traits::NoopDepositStorageHooks,
-};
+pub use crate::{default_weights::WeightInfo, deposit::FixedDepositCollectorViaDepositsPallet, pallet::*};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -113,6 +113,10 @@ pub mod pallet {
 		/// The origin was not authorized to perform the operation on the
 		/// specified deposit entry.
 		Unauthorized,
+		/// The origin did not have enough fund to pay for the deposit.
+		FailedToHold,
+		/// Error when trying to release a previously-reserved deposit.
+		FailedToRelease,
 		/// The external hook failed.
 		Hook(u16),
 	}
@@ -145,8 +149,14 @@ pub mod pallet {
 	/// deposit instance.
 	#[pallet::storage]
 	#[pallet::getter(fn deposits)]
-	pub(crate) type Deposits<T> =
-		StorageDoubleMap<_, Twox64Concat, <T as Config>::Namespace, Twox64Concat, DepositKeyOf<T>, DepositEntryOf<T>>;
+	pub(crate) type Deposits<T> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		<T as Config>::Namespace,
+		Blake2_128Concat,
+		DepositKeyOf<T>,
+		DepositEntryOf<T>,
+	>;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -184,7 +194,8 @@ pub mod pallet {
 						entry.deposit.owner.clone(),
 						entry.deposit.amount,
 						&entry.reason,
-					)?;
+					)
+					.map_err(|_| Error::<T>::FailedToHold)?;
 					Self::deposit_event(Event::<T>::DepositAdded {
 						namespace: namespace.clone(),
 						key: key.clone(),
@@ -214,7 +225,8 @@ pub mod pallet {
 					Error::<T>::Unauthorized
 				);
 			}
-			free_deposit::<AccountIdOf<T>, T::Currency>(&existing_entry.deposit, &existing_entry.reason)?;
+			free_deposit::<AccountIdOf<T>, T::Currency>(&existing_entry.deposit, &existing_entry.reason)
+				.map_err(|_| Error::<T>::FailedToRelease)?;
 			Self::deposit_event(Event::<T>::DepositReclaimed {
 				namespace: namespace.clone(),
 				key: key.clone(),

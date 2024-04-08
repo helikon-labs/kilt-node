@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -47,7 +47,6 @@ use sp_runtime::{
 };
 use sp_std::{cmp::Ordering, prelude::*};
 use sp_version::RuntimeVersion;
-use xcm_executor::XcmExecutor;
 
 use delegation::DelegationAc;
 use kilt_support::traits::ItemFilter;
@@ -59,13 +58,12 @@ use runtime_common::{
 	assets::{AssetDid, PublicCredentialsFilter},
 	authorization::{AuthorizationId, PalletAuthorize},
 	constants::{self, UnvestedFundsAllowedWithdrawReasons, EXISTENTIAL_DEPOSIT, KILT},
+	dip::merkle::{CompleteMerkleProof, DidMerkleProofOf, DidMerkleRootGenerator},
 	errors::PublicCredentialsApiError,
 	fees::{ToAuthor, WeightToFee},
 	pallet_id, AccountId, AuthorityId, Balance, BlockHashCount, BlockLength, BlockNumber, BlockWeights, DidIdentifier,
 	FeeSplit, Hash, Header, Nonce, Signature, SlowAdjustingFeeUpdate,
 };
-
-use crate::xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -78,8 +76,9 @@ pub use sp_runtime::BuildStorage;
 #[cfg(test)]
 mod tests;
 
+mod dip;
 mod weights;
-mod xcm_config;
+pub mod xcm_config;
 
 impl_opaque_keys! {
 	pub struct SessionKeys {
@@ -93,7 +92,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("kilt-spiritnet"),
 	impl_name: create_runtime_str!("kilt-spiritnet"),
 	authoring_version: 1,
-	spec_version: 11210,
+	spec_version: 11300,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 8,
@@ -249,24 +248,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
-	type PriceForSiblingDelivery = ();
-}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-}
 
 parameter_types! {
 	pub const MaxAuthorities: u32 = constants::staking::MAX_CANDIDATES;
@@ -764,8 +745,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					| RuntimeCall::Ctype(..)
 					| RuntimeCall::Delegation(..)
 					| RuntimeCall::Democracy(..)
+					| RuntimeCall::DepositStorage(..)
 					| RuntimeCall::Did(..)
 					| RuntimeCall::DidLookup(..)
+					| RuntimeCall::DipProvider(..)
 					| RuntimeCall::Indices(
 						// Excludes `force_transfer`, and `transfer`
 						pallet_indices::Call::claim { .. }
@@ -817,6 +800,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 							| delegation::Call::change_deposit_owner { .. }
 					)
 					| RuntimeCall::Democracy(..)
+					// Excludes `DepositStorage`
 					| RuntimeCall::Did(
 						// Excludes `reclaim_deposit`
 						did::Call::add_key_agreement_key { .. }
@@ -833,6 +817,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 							| did::Call::submit_did_call { .. }
 							| did::Call::update_deposit { .. }
 							| did::Call::change_deposit_owner { .. }
+							| did::Call::create_from_account { .. }
+							| did::Call::dispatch_as { .. }
 					)
 					| RuntimeCall::DidLookup(
 						// Excludes `reclaim_deposit`
@@ -843,6 +829,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 							| pallet_did_lookup::Call::update_deposit { .. }
 							| pallet_did_lookup::Call::change_deposit_owner { .. }
 					)
+					| RuntimeCall::DipProvider(..)
 					| RuntimeCall::Indices(..)
 					| RuntimeCall::Multisig(..)
 					| RuntimeCall::ParachainStaking(..)
@@ -993,6 +980,8 @@ construct_runtime! {
 		Web3Names: pallet_web3_names = 68,
 		PublicCredentials: public_credentials = 69,
 		Migration: pallet_migration = 70,
+		DipProvider: pallet_dip_provider = 71,
+		DepositStorage: pallet_deposit_storage = 72,
 
 		// Parachains pallets. Start indices at 80 to leave room.
 
@@ -1036,6 +1025,7 @@ impl did::DeriveDidCallAuthorizationVerificationKeyRelationship for RuntimeCall 
 			RuntimeCall::Attestation { .. } => Ok(did::DidVerificationKeyRelationship::AssertionMethod),
 			RuntimeCall::Ctype { .. } => Ok(did::DidVerificationKeyRelationship::AssertionMethod),
 			RuntimeCall::Delegation { .. } => Ok(did::DidVerificationKeyRelationship::CapabilityDelegation),
+			RuntimeCall::DipProvider { .. } => Ok(did::DidVerificationKeyRelationship::Authentication),
 			// DID creation is not allowed through the DID proxy.
 			RuntimeCall::Did(did::Call::create { .. }) => Err(did::RelationshipDeriveError::NotCallableByDid),
 			RuntimeCall::Did { .. } => Ok(did::DidVerificationKeyRelationship::Authentication),
@@ -1092,11 +1082,7 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	// Executes pallet hooks in the order of definition in construct_runtime
 	AllPalletsWithSystem,
-	(
-		runtime_common::migrations::BumpStorageVersion<Runtime>,
-		parachain_staking::migrations::BalanceMigration<Runtime>,
-		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-	),
+	(),
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -1130,6 +1116,8 @@ mod benches {
 		[public_credentials, PublicCredentials]
 		[pallet_xcm, PolkadotXcm]
 		[pallet_migration, Migration]
+		[pallet_dip_provider, DipProvider]
+		[pallet_deposit_storage, DepositStorage]
 		[frame_benchmarking::baseline, Baseline::<Runtime>]
 	);
 }
@@ -1393,6 +1381,16 @@ impl_runtime_apis! {
 
 		fn get_staking_rates() -> kilt_runtime_api_staking::StakingRates {
 			ParachainStaking::get_staking_rates()
+		}
+	}
+
+	impl kilt_runtime_api_dip_provider::DipProvider<Block, dip::runtime_api::DipProofRequest, CompleteMerkleProof<Hash, DidMerkleProofOf<Runtime>>, dip::runtime_api::DipProofError> for Runtime {
+		fn generate_proof(request: dip::runtime_api::DipProofRequest) -> Result<CompleteMerkleProof<Hash, DidMerkleProofOf<Runtime>>, dip::runtime_api::DipProofError> {
+			use pallet_dip_provider::traits::IdentityProvider;
+
+			let identity_details = pallet_dip_provider::IdentityProviderOf::<Runtime>::retrieve(&request.identifier).map_err(dip::runtime_api::DipProofError::IdentityProvider)?;
+
+			DidMerkleRootGenerator::<Runtime>::generate_proof(&identity_details, request.version, request.keys.iter(), request.should_include_web3_name, request.accounts.iter()).map_err(dip::runtime_api::DipProofError::MerkleProof)
 		}
 	}
 

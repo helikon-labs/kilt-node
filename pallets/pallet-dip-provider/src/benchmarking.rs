@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ use kilt_support::{
 		T::CommitOriginCheck: GenerateBenchmarkOrigin<T::RuntimeOrigin, T::AccountId, T::Identifier>,
 		T::AccountId: Instanciate,
 		T::Identifier: Instanciate,
-		<<T as Config>::IdentityProvider as IdentityProvider<T>>::Success: GetWorstCase<IdentityContext<T::Identifier, T::AccountId>>
+		<<T as Config>::IdentityProvider as IdentityProvider<T>>::Success: GetWorstCase<IdentityContext<T::Identifier, T::AccountId>, Output = <<T as Config>::IdentityProvider as IdentityProvider<T>>::Success>
 )]
 mod benchmarks {
 

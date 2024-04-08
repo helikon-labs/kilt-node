@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -249,7 +249,9 @@ pub(crate) mod runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<Context> kilt_support::traits::GetWorstCase<Context> for TestSubjectId {
 		// Only used for benchmark testing, not really relevant.
-		fn worst_case(_context: Context) -> Self {
+		type Output = Self;
+
+		fn worst_case(_context: Context) -> Self::Output {
 			crate::mock::TestSubjectId::default()
 		}
 	}

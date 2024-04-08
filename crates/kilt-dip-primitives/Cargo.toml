@@ -14,7 +14,6 @@ version.workspace = true
 # External dependencies
 hash-db.workspace = true
 log.workspace = true
-cfg-if.workspace = true
 
 # Internal dependencies
 did.workspace = true
@@ -39,18 +38,16 @@ sp-state-machine.workspace = true
 sp-std.workspace = true
 sp-trie.workspace = true
 
-# Polkadot dependencies
-rococo-runtime.workspace = true
-xcm.workspace = true
-xcm-executor.workspace = true
-
 # Cumulus dependencies
-cumulus-pallet-parachain-system.workspace = true
 cumulus-primitives-core.workspace = true
-parachain-info.workspace = true
 
 [dev-dependencies]
+cumulus-pallet-parachain-system = { workspace = true, features = ["std"] }
+enum-iterator.workspace = true
 hex-literal.workspace = true
+peregrine-runtime = { workspace = true, features = ["std"] }
+rococo-runtime = { workspace = true, features = ["std"] }
+spiritnet-runtime = { workspace = true, features = ["std"] }
 sp-io = { workspace = true, features = ["std"] }
 
 [features]
@@ -75,16 +72,10 @@ std = [
   "sp-state-machine/std",
   "sp-std/std",
   "sp-trie/std",
-  "rococo-runtime/std",
-  "xcm/std",
-  "xcm-executor/std",
-  "cumulus-pallet-parachain-system/std",
   "cumulus-primitives-core/std",
-  "parachain-info/std",
 ]
 runtime-benchmarks = [
   "kilt-support/runtime-benchmarks",
   "pallet-dip-consumer/runtime-benchmarks",
-  "pallet-dip-provider/runtime-benchmarks",
-  "rococo-runtime/runtime-benchmarks"
+  "pallet-dip-provider/runtime-benchmarks"
 ]

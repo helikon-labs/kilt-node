@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,11 +27,13 @@ mod benchmarking;
 
 #[cfg(test)]
 mod mock;
+#[cfg(test)]
+mod tests;
 
 pub use crate::{
 	default_weights::WeightInfo,
 	pallet::*,
-	traits::{DefaultIdentityCommitmentGenerator, DefaultIdentityProvider, NoopHooks},
+	traits::{DefaultIdentityCommitmentGenerator, DefaultIdentityProvider},
 };
 
 #[frame_support::pallet]
@@ -89,7 +91,7 @@ pub mod pallet {
 	#[pallet::getter(fn identity_commitments)]
 	pub type IdentityCommitments<T> = StorageDoubleMap<
 		_,
-		Twox64Concat,
+		Blake2_128Concat,
 		<T as Config>::Identifier,
 		Twox64Concat,
 		IdentityCommitmentVersion,

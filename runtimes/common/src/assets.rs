@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -105,7 +105,9 @@ mod benchmarks {
 	}
 
 	impl<Context> kilt_support::traits::GetWorstCase<Context> for AssetDid {
-		fn worst_case(_context: Context) -> Self {
+		type Output = Self;
+
+		fn worst_case(_context: Context) -> Self::Output {
 			// Returns the worst case for an AssetDID, which is represented by the longest
 			// identifier according to the spec.
 			Self::try_from(

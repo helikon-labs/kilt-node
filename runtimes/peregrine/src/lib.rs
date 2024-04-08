@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -30,13 +30,12 @@ use frame_support::{
 	traits::{AsEnsureOriginWithArg, ConstU32, EitherOfDiverse, Everything, InstanceFilter, PrivilegeCmp},
 	weights::{ConstantMultiplier, Weight},
 };
-use frame_system::{EnsureRoot, EnsureSigned};
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 
 #[cfg(feature = "try-runtime")]
 use frame_try_runtime::UpgradeCheckSelect;
 
-use frame_system::pallet_prelude::BlockNumberFor;
 use sp_api::impl_runtime_apis;
 use sp_core::{ConstBool, OpaqueMetadata};
 use sp_runtime::{
@@ -47,7 +46,6 @@ use sp_runtime::{
 };
 use sp_std::{cmp::Ordering, prelude::*};
 use sp_version::RuntimeVersion;
-use xcm_executor::XcmExecutor;
 
 use delegation::DelegationAc;
 use kilt_support::traits::ItemFilter;
@@ -66,8 +64,6 @@ use runtime_common::{
 	FeeSplit, Hash, Header, Nonce, Signature, SlowAdjustingFeeUpdate,
 };
 
-use crate::xcm_config::{XcmConfig, XcmOriginToTransactDispatchOrigin};
-
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 #[cfg(feature = "runtime-benchmarks")]
@@ -81,7 +77,7 @@ mod tests;
 
 mod dip;
 mod weights;
-mod xcm_config;
+pub mod xcm_config;
 
 impl_opaque_keys! {
 	pub struct SessionKeys {
@@ -95,7 +91,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("mashnet-node"),
 	impl_name: create_runtime_str!("mashnet-node"),
 	authoring_version: 4,
-	spec_version: 11210,
+	spec_version: 11300,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 8,
@@ -258,24 +254,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ChannelInfo = ParachainSystem;
-	type VersionWrapper = PolkadotXcm;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
-	type PriceForSiblingDelivery = ();
-}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-}
 
 parameter_types! {
 	pub const MaxAuthorities: u32 = constants::staking::MAX_CANDIDATES;
@@ -851,6 +829,8 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 							| did::Call::submit_did_call { .. }
 							| did::Call::update_deposit { .. }
 							| did::Call::change_deposit_owner { .. }
+							| did::Call::create_from_account { .. }
+							| did::Call::dispatch_as { .. }
 					)
 					| RuntimeCall::DidLookup(
 						// Excludes `reclaim_deposit`
@@ -1116,11 +1096,7 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	// Executes pallet hooks in the order of definition in construct_runtime
 	AllPalletsWithSystem,
-	(
-		runtime_common::migrations::BumpStorageVersion<Runtime>,
-		parachain_staking::migrations::BalanceMigration<Runtime>,
-		pallet_xcm::migration::v1::MigrateToV1<Runtime>,
-	),
+	(),
 >;
 
 #[cfg(feature = "runtime-benchmarks")]

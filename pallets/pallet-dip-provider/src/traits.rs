@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ pub mod identity_provision {
 
 	/// Return the `Default` value of the provided `Identity` type if it
 	/// implements the `Default` trait.
-	pub struct DefaultIdentityProvider<Identity>(PhantomData<Identity>);
+	pub struct DefaultIdentityProvider<Identity = ()>(PhantomData<Identity>);
 
 	impl<Runtime, Identity> IdentityProvider<Runtime> for DefaultIdentityProvider<Identity>
 	where
@@ -91,7 +91,7 @@ pub mod identity_generation {
 
 	/// Implement the [`IdentityCommitmentGenerator`] trait by returning the
 	/// `Default` value for the `Output` type.
-	pub struct DefaultIdentityCommitmentGenerator<Output>(PhantomData<Output>);
+	pub struct DefaultIdentityCommitmentGenerator<Output = ()>(PhantomData<Output>);
 
 	impl<Runtime, Output> IdentityCommitmentGenerator<Runtime> for DefaultIdentityCommitmentGenerator<Output>
 	where
@@ -172,10 +172,7 @@ where
 	) -> Result<(), Self::Error>;
 }
 
-/// Implement the [`ProviderHooks`] trait with noops.
-pub struct NoopHooks;
-
-impl<Runtime> ProviderHooks<Runtime> for NoopHooks
+impl<Runtime> ProviderHooks<Runtime> for ()
 where
 	Runtime: Config,
 {

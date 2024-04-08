@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,7 +24,10 @@ pub mod traits;
 mod default_weights;
 
 #[cfg(test)]
-pub mod mock;
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
@@ -41,7 +44,6 @@ pub mod pallet {
 		dispatch::{Dispatchable, GetDispatchInfo, PostDispatchInfo},
 		pallet_prelude::*,
 		traits::{Contains, EnsureOriginWithArg},
-		Twox64Concat,
 	};
 	use frame_system::pallet_prelude::*;
 	use parity_scale_codec::{FullCodec, MaxEncodedLen};
@@ -108,7 +110,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn identity_proofs)]
 	pub(crate) type IdentityEntries<T> =
-		StorageMap<_, Twox64Concat, <T as Config>::Identifier, <T as Config>::LocalIdentityInfo>;
+		StorageMap<_, Blake2_128Concat, <T as Config>::Identifier, <T as Config>::LocalIdentityInfo>;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]

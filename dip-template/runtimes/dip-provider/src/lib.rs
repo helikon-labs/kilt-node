@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -156,7 +156,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("dip-provider-runtime-template"),
 	impl_name: create_runtime_str!("dip-provider-runtime-template"),
 	authoring_version: 1,
-	spec_version: 11100,
+	spec_version: 11300,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -376,11 +376,13 @@ impl did::DeriveDidCallAuthorizationVerificationKeyRelationship for RuntimeCall 
 	}
 }
 
+pub const MAX_PUBLIC_KEYS_PER_DID: u32 = 20;
+const MAX_TOTAL_KEY_AGREEMENT_KEYS: u32 = MAX_PUBLIC_KEYS_PER_DID - 1;
 parameter_types! {
 	#[derive(Debug, Clone, Eq, PartialEq)]
-	pub const MaxTotalKeyAgreementKeys: u32 = 50;
+	pub const MaxTotalKeyAgreementKeys: u32 = MAX_TOTAL_KEY_AGREEMENT_KEYS;
 	#[derive(Debug, Clone, Eq, PartialEq, TypeInfo, Encode, Decode)]
-	pub const MaxNewKeyAgreementKeys: u32 = 50;
+	pub const MaxNewKeyAgreementKeys: u32 = MAX_TOTAL_KEY_AGREEMENT_KEYS;
 }
 
 impl did::Config for Runtime {
@@ -397,7 +399,7 @@ impl did::Config for Runtime {
 	type MaxNumberOfServicesPerDid = ConstU32<1>;
 	type MaxNumberOfTypesPerService = ConstU32<1>;
 	type MaxNumberOfUrlsPerService = ConstU32<1>;
-	type MaxPublicKeysPerDid = ConstU32<53>;
+	type MaxPublicKeysPerDid = ConstU32<MAX_PUBLIC_KEYS_PER_DID>;
 	type MaxServiceIdLength = ConstU32<100>;
 	type MaxServiceTypeLength = ConstU32<100>;
 	type MaxServiceUrlLength = ConstU32<100>;

@@ -1,5 +1,5 @@
 // KILT Blockchain – https://botlabs.org
-// Copyright (C) 2019-2023 BOTLabs GmbH
+// Copyright (C) 2019-2024 BOTLabs GmbH
 
 // The KILT Blockchain is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ benchmarks! {
 		T: Config,
 		T: ctype::Config<CtypeCreatorId = T::AttesterId>,
 		<T as Config>::EnsureOrigin: GenerateBenchmarkOrigin<T::RuntimeOrigin, T::AccountId, T::AttesterId>,
-		<T as Config>::SubjectId: GetWorstCase + Into<Vec<u8>> + sp_std::fmt::Debug,
+		<T as Config>::SubjectId: GetWorstCase<Output = <T as Config>::SubjectId> + Into<Vec<u8>> + sp_std::fmt::Debug,
 		<T as Config>::CredentialId: Default,
 		BlockNumberFor<T>: From<u64>,
 		<T as Config>::Currency: Mutate<T::AccountId>,
